@@ -5,7 +5,7 @@ import org.nyyakko.eryn.*;
 import java.util.Optional;
 import java.util.ArrayList;
 
-public class FunctionDeclNode extends ISymbol
+public class FunctionNode extends ISymbol
 {
     public ISymbol.Type getSymbolType() { return ISymbol.Type.FUNCTION; }
 
