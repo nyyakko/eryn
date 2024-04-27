@@ -49,7 +49,7 @@ public class Parser
                 if (currentToken.data.equals("def"))
                 {
                     INode node = parseFunction(context);
-                    ((ScopeNode)root).functionNodes.put(((FunctionDeclNode)node).name, node);
+                    ((ScopeNode)root).functionNodes.put(((FunctionNode)node).name, node);
                 }
                 else if (currentToken.data.equals("let"))
                 {
@@ -156,7 +156,7 @@ public class Parser
 
     private INode parseFunction(Context context)
     {
-        FunctionDeclNode node = new FunctionDeclNode();
+        FunctionNode node = new FunctionNode();
         node.returnType   = Optional.empty(); // FIXME: properly handle return type
         assert(!Lexer.keywords.contains(peek().data)) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);
         node.name         = take().data;

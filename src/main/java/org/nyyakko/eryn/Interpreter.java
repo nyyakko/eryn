@@ -31,7 +31,7 @@ public class Interpreter
     {
         assert(getScopeContext((ScopeNode)ast).functionNodes.containsKey("main")) : "MAIN PROCEDURE NOT FOUND";
 
-        FunctionDeclNode main = (FunctionDeclNode)(((ScopeNode)ast).functionNodes.get("main"));
+        FunctionNode main = (FunctionNode)(((ScopeNode)ast).functionNodes.get("main"));
 
         interpret(
             main.body,
@@ -72,7 +72,7 @@ public class Interpreter
                 }
                 else
                 {
-                    FunctionDeclNode callee = (FunctionDeclNode)globalContext.functionNodes.get(node.callee);
+                    FunctionNode callee = (FunctionNode)globalContext.functionNodes.get(node.callee);
 
                     for (String parameterName : node.arguments)
                     {
