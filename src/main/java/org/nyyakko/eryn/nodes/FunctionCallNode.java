@@ -5,9 +5,8 @@ import org.nyyakko.eryn.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class FunctionCallNode implements IStatement
+public class FunctionCallNode extends IStatement
 {
-    public INode.Type getNodeType() { return INode.Type.STATEMENT; }
     public IStatement.Type getStatementType() { return IStatement.Type.EXPRESSION; }
 
     public String callee;

@@ -1,8 +1,8 @@
 package org.nyyakko.eryn.nodes;
 
-public interface IStatement extends INode
+public abstract class IStatement implements INode
 {
-    enum Type
+    public enum Type
     {
         BEGIN__,
         EXPRESSION,
@@ -11,5 +11,6 @@ public interface IStatement extends INode
         END__
     }
 
-    public Type getStatementType();
+    public INode.Type getNodeType() { return INode.Type.STATEMENT; }
+    abstract public Type getStatementType();
 }

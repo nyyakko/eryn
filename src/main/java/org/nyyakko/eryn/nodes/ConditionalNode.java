@@ -4,9 +4,8 @@ import org.nyyakko.eryn.*;
 
 import java.util.Optional;
 
-public class ConditionalNode implements IStatement
+public class ConditionalNode extends IStatement
 {
-    public INode.Type getNodeType() { return INode.Type.STATEMENT; }
     public IStatement.Type getStatementType() { return IStatement.Type.CONDITIONAL; }
 
     public INode condition;

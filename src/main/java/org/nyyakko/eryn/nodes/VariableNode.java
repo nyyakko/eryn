@@ -4,9 +4,8 @@ import org.nyyakko.eryn.*;
 
 import java.util.Optional;
 
-public class VariableNode implements ISymbol
+public class VariableNode extends ISymbol
 {
-    public INode.Type getNodeType() { return INode.Type.SYMBOL; }
     public ISymbol.Type getSymbolType() { return ISymbol.Type.VARIABLE; }
 
     public String type;

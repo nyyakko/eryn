@@ -5,9 +5,8 @@ import org.nyyakko.eryn.*;
 import java.util.Optional;
 import java.util.ArrayList;
 
-public class FunctionDeclNode implements ISymbol
+public class FunctionDeclNode extends ISymbol
 {
-    public INode.Type getNodeType() { return INode.Type.SYMBOL; }
     public ISymbol.Type getSymbolType() { return ISymbol.Type.FUNCTION; }
 
     public Optional<String> returnType = Optional.empty();

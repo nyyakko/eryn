@@ -1,8 +1,8 @@
 package org.nyyakko.eryn.nodes;
 
-public interface ISymbol extends INode
+public abstract class ISymbol implements INode
 {
-    enum Type
+    public enum Type
     {
         BEGIN__,
         FUNCTION,
@@ -10,5 +10,6 @@ public interface ISymbol extends INode
         END__
     }
 
-    public Type getSymbolType();
+    public INode.Type getNodeType() { return INode.Type.SYMBOL; }
+    abstract public Type getSymbolType();
 }
