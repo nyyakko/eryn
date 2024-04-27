@@ -3,10 +3,10 @@
 An interpreted programming language made in Java for learning purposes. Currently not finished (and maybe never will be).
 
 # building
->mvn package
+``>mvn package``
 
 # running (need java 21 or higher)
->java -jar ea target/eryn.jar <SOURCE>
+``>java -jar ea target/eryn.jar <SOURCE>``
 
 # examples
 ```ruby
