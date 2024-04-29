@@ -1,0 +1,10 @@
+import "./std.eryn"
+
+fn say(message: string)
+    println(message)
+end
+
+fn main()
+    let message: string = "Whats the hecks!?"
+    say(message)
+end

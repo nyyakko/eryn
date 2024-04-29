@@ -10,12 +10,16 @@ An interpreted programming language made in Java for learning purposes. Currentl
 
 # examples
 ```ruby
+import "./std.eryn"
+
 def main()
     println("Hello, world!")
 end
 ```
 
 ```ruby
+import "./std.eryn"
+
 def say(message: string)
     println(message)
 end
