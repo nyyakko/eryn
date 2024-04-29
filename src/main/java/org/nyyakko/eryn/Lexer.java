@@ -8,8 +8,20 @@ import java.util.Optional;
 
 public class Lexer
 {
+    static class Position
+    {
+        public Position(Integer row, Integer col)
+        {
+            this.row = row;
+            this.col = col;
+        }
+
+        public Integer row;
+        public Integer col;
+    }
+
     private static final List<Character> special = List.of('"', '(', ')', ':', '=', ' ');
-    public static final List<String> keywords   = List.of(
+    public static final List<String> keywords    = List.of(
         "def",
         "end",
         "if",
@@ -32,9 +44,8 @@ public class Lexer
 
     public Lexer(ArrayList<String> source)
     {
-        this.source    = source;
-        this.cursorRow = 0;
-        this.cursorCol = 0;
+        this.source = source;
+        this.cursor = new Position(0, 0);
     }
 
     public ArrayList<String> getSource() { return source; }
@@ -43,36 +54,30 @@ public class Lexer
     {
         ArrayList<Token> result = new ArrayList<Token>();
 
-        for (; cursorRow < source.size(); cursorRow += 1)
+        for (; cursor.row < source.size(); cursor.row += 1)
         {
-            while (cursorCol < source.get(cursorRow).length())
+            while (cursor.col < source.get(cursor.row).length())
             {
                 dropSpaces();
-                Integer prev = this.cursorCol;
-                Token token  = nextToken();
-                token.row    = cursorRow + 1;
-                token.col    = prev + 1;
+                Integer prev   = cursor.col;
+                Token token    = nextToken().get();
+                token.position = new Token.Position(cursor.row + 1, prev + 1);
                 result.add(token);
             }
 
-            this.cursorCol = 0;
+            cursor.col = 0;
         }
 
         return result;
     }
 
-    private Token nextToken()
+    private Optional<Token> nextToken()
     {
-        Optional<Token> token =
-            nextKeyword()
+        return nextKeyword()
                 .or(() -> nextIdentifier())
                 .or(() -> nextStringLiteral())
                 .or(() -> nextNumberLiteral())
                 .or(() -> nextSpecial());
-
-        assert(token.isPresent());
-
-        return token.get();
     }
 
     private Optional<Token> nextStringLiteral()
@@ -83,12 +88,11 @@ public class Lexer
         StringBuilder sb = new StringBuilder();
 
         take();
-        while (!eof() && peek() != '"')
+        while (!eof())
         {
+            if (peek() == '"') { take(); break; }
             sb.append(take());
         }
-
-        if (peek() == '"') take();
 
         result.type = Token.Type.LITERAL;
         result.data = sb.toString();
@@ -181,12 +185,11 @@ public class Lexer
     }
 
     private void dropSpaces() { while (!eof() && Character.isSpaceChar(peek())) take(); }
-    private Boolean eof() { return cursorCol >= source.get(cursorRow).length(); }
-    private Character peek() { return source.get(cursorRow).charAt(cursorCol); }
-    private Character take() { return source.get(cursorRow).charAt(cursorCol++); }
-    private void untake(int count) { cursorCol -= count; }
+    private Boolean eof() { return cursor.col >= source.get(cursor.row).length(); }
+    private Character peek() { return source.get(cursor.row).charAt(cursor.col); }
+    private Character take() { return source.get(cursor.row).charAt(cursor.col++); }
+    private void untake(int count) { cursor.col -= count; }
 
     private ArrayList<String> source;
-    private Integer cursorRow;
-    private Integer cursorCol;
+    private Position cursor;
 }

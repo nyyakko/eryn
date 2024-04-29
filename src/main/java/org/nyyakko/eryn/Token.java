@@ -2,6 +2,8 @@ package org.nyyakko.eryn;
 
 public class Token
 {
+    static public record Position(Integer row, Integer col) {}
+
     public enum Type
     {
         BEGIN__,
@@ -17,6 +19,5 @@ public class Token
 
     public Type type;
     public String data;
-    public Integer row;
-    public Integer col;
+    public Position position;
 }

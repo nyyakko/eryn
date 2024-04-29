@@ -1,141 +1,162 @@
 package org.nyyakko.eryn;
 
-import org.nyyakko.eryn.nodes.*;
+import org.nyyakko.eryn.Nodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class Interpreter
 {
     class Context
     {
-        Context(ArrayList<INode> nodes, HashMap<String, INode> functionNodes, HashMap<String, INode> variableNodes)
+        Context(
+            ArrayList<Nodes.INode> nodes,
+            HashMap<String, Nodes.INode> functionNodes,
+            HashMap<String, Nodes.INode> variableNodes)
         {
             this.nodes         = nodes;
             this.functionNodes = functionNodes;
             this.variableNodes = variableNodes;
         }
 
-        public ArrayList<INode> nodes;
-        public HashMap<String, INode> functionNodes;
-        public HashMap<String, INode> variableNodes;
+        public ArrayList<Nodes.INode> nodes;
+        public HashMap<String, Nodes.INode> functionNodes;
+        public HashMap<String, Nodes.INode> variableNodes;
     }
 
-    Interpreter(INode ast)
+    static final List<String> intrinsics = List.of(
+        "println"
+    );
+
+    Interpreter(Nodes.INode ast)
     {
         this.ast = ast;
     }
 
     public void interpret()
     {
-        assert(getScopeContext((ScopeNode)ast).functionNodes.containsKey("main")) : "MAIN PROCEDURE NOT FOUND";
+        assert(getScopeContext((Nodes.Scope)ast).functionNodes.containsKey("main")) : "MAIN PROCEDURE NOT FOUND";
 
-        FunctionNode main = (FunctionNode)(((ScopeNode)ast).functionNodes.get("main"));
+        Nodes.Function main = (Nodes.Function)(((Nodes.Scope)ast).functionNodes.get("main"));
 
         interpret(
             main.body,
-            getScopeContext((ScopeNode)ast),
-            getScopeContext((ScopeNode)main.body)
+            getScopeContext((Nodes.Scope)ast),
+            getScopeContext((Nodes.Scope)main.body)
         );
     }
 
-    private void interpret(INode head, Context globalContext, Context localContext)
+    private void interpret(Nodes.INode head, Context globalContext, Context localContext)
     {
-        switch (head.getNodeType())
+        switch (head)
         {
-        case SCOPE: {
-            for (INode node : localContext.nodes)
+        case Nodes.IStatement statement -> {
+            switch (statement)
             {
-                interpret(node, globalContext, localContext);
+            case Nodes.Conditional _ -> {
+                assert(false) : "NOT IMPLEMENTED";
             }
+            case Nodes.FunctionCall node -> {
+                Function<Nodes.INode, Nodes.Variable> fnGetVariable = (x) -> {
+                    switch (x)
+                    {
+                    case Nodes.Let let -> { return (Nodes.Variable)let.value; }
+                    case Nodes.Variable variable -> { return variable; }
+                    case Nodes.INode _ -> { break; }
+                    }
+                    assert(false);
+                    return null;
+                };
 
-            break;
-        }
-        case SYMBOL: break;
-        case STATEMENT: {
-            IStatement statement = (IStatement)head;
-
-            switch (statement.getStatementType())
-            {
-            case EXPRESSION: {
-                FunctionCallNode node = (FunctionCallNode)statement;
-
-                if (node.callee.equals("println")) // NOTE: das crazy
+                if (intrinsics.contains(node.callee))
                 {
-                    if (localContext.variableNodes.containsKey(node.arguments.get(0)))
-                        System.out.println(((VariableNode)localContext.variableNodes.get(node.arguments.get(0))).value.get());
-                    else if (globalContext.variableNodes.containsKey(node.arguments.get(0)))
-                        System.out.println(((VariableNode)globalContext.variableNodes.get(node.arguments.get(0))).value.get());
-                    else
+                    System.out.println("");
+                    handleIntrinsicCall(node, localContext, globalContext);
+                    Boolean isLocal  = localContext.variableNodes.containsKey(node.arguments.get(0));
+                    Boolean isGlobal = globalContext.variableNodes.containsKey(node.arguments.get(0));
+
+                    if (!(isLocal || isGlobal))
+                    {
                         System.out.println(node.arguments.get(0));
+                        break;
+                    }
+
+                    if (isLocal)
+                    {
+                        Nodes.Variable variable = fnGetVariable.apply(localContext.variableNodes.get(node.arguments.get(0)));
+                        System.out.println(variable.value.get());
+                    }
+                    else
+                    {
+                        Nodes.Variable variable = fnGetVariable.apply(globalContext.variableNodes.get(node.arguments.get(0)));
+                        System.out.println(variable.value.get());
+                    }
+
+                    break;
                 }
                 else
                 {
-                    FunctionNode callee = (FunctionNode)globalContext.functionNodes.get(node.callee);
+                    Nodes.Function callee = (Nodes.Function)globalContext.functionNodes.get(node.callee);
 
                     for (String parameterName : node.arguments)
                     {
-                        if (localContext.variableNodes.containsKey(parameterName))
+                        Boolean isLocal  = localContext.variableNodes.containsKey(parameterName);
+                        Boolean isGlobal = globalContext.variableNodes.containsKey(parameterName);
+
+                        if (!(isLocal || isGlobal))
                         {
-                            VariableNode argumentNode  = (VariableNode)callee.arguments.get(node.arguments.indexOf(parameterName));
-                            VariableNode parameterNode = (VariableNode)localContext.variableNodes.get(parameterName);
-                            assert(argumentNode.type.equals(parameterNode.type)) : "MISMATCHING TYPES";
-                            argumentNode.value = parameterNode.value;
-                            ((ScopeNode)callee.body).variableNodes.put(argumentNode.name, argumentNode);
-                        }
-                        else if (globalContext.variableNodes.containsKey(parameterName))
-                        {
-                            VariableNode argumentNode  = (VariableNode)callee.arguments.get(node.arguments.indexOf(parameterName));
-                            VariableNode parameterNode = (VariableNode)globalContext.variableNodes.get(parameterName);
-                            assert(argumentNode.type.equals(parameterNode.type)) : "MISMATCHING TYPES";
-                            argumentNode.value = parameterNode.value;
-                            ((ScopeNode)callee.body).variableNodes.put(argumentNode.name, argumentNode);
-                        }
-                        else
-                        {
-                            VariableNode argumentNode  = (VariableNode)callee.arguments.get(node.arguments.indexOf(parameterName));
-                            VariableNode parameterNode = (VariableNode)globalContext.variableNodes.get(parameterName);
+                            Nodes.Variable argumentNode  = (Nodes.Variable)callee.arguments.get(node.arguments.indexOf(parameterName));
+                            Nodes.Variable parameterNode = (Nodes.Variable)globalContext.variableNodes.get(parameterName);
                             // FIXME:
                             //    * properly deduce types
                             //    * properly handle type mismatch
                             argumentNode.value         = Optional.of(parameterName);
-                            ((ScopeNode)callee.body).variableNodes.put(argumentNode.name, argumentNode);
+                            ((Nodes.Scope)callee.body).variableNodes.put(argumentNode.name, argumentNode);
+                            continue;
+                        }
+
+                        if (isLocal)
+                        {
+                            Nodes.Variable argumentNode  = (Nodes.Variable)callee.arguments.get(node.arguments.indexOf(parameterName));
+                            Nodes.Let let = (Nodes.Let)localContext.variableNodes.get(parameterName);
+                            Nodes.Variable parameterNode = (Nodes.Variable)let.value;
+                            assert(argumentNode.type.equals(parameterNode.type)) : "MISMATCHING TYPES";
+                            argumentNode.value = parameterNode.value;
+                            ((Nodes.Scope)callee.body).variableNodes.put(argumentNode.name, argumentNode);
+                        }
+                        else
+                        {
+                            Nodes.Variable argumentNode  = (Nodes.Variable)callee.arguments.get(node.arguments.indexOf(parameterName));
+                            Nodes.Variable parameterNode = (Nodes.Variable)globalContext.variableNodes.get(parameterName);
+                            assert(argumentNode.type.equals(parameterNode.type)) : "MISMATCHING TYPES";
+                            argumentNode.value = parameterNode.value;
+                            ((Nodes.Scope)callee.body).variableNodes.put(argumentNode.name, argumentNode);
                         }
                     }
 
-                    interpret(callee.body, globalContext, getScopeContext((ScopeNode)callee.body));
+                    interpret(callee.body, globalContext, getScopeContext((Nodes.Scope)callee.body));
                 }
-
                 break;
             }
-            case DECLARATION: break;
-            case CONDITIONAL: break;
-
-            case BEGIN__:
-            case END__: {
-                assert(false);
-                break;
+            case Nodes.IStatement _ -> { assert(false); }
             }
-            }
-
             break;
         }
-        case LITERAL: break;
-        case EXPRESSION: break;
-
-        case BEGIN__:
-        case END__: {
-            assert(false);
+        case Nodes.Scope _ -> {
+            for (Nodes.INode node : localContext.nodes)
+                interpret(node, globalContext, localContext);
             break;
         }
+        case Nodes.INode _ -> { assert(false); }
         }
     }
 
-    private Context getScopeContext(ScopeNode scope)
+    private Context getScopeContext(Nodes.Scope scope)
     {
         return new Context(scope.nodes, scope.functionNodes, scope.variableNodes);
     }
 
-    private INode ast;
+    private Nodes.INode ast;
 }

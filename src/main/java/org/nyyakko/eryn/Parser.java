@@ -1,7 +1,8 @@
 package org.nyyakko.eryn;
 
+import org.nyyakko.eryn.Token;
 import org.nyyakko.eryn.Lexer;
-import org.nyyakko.eryn.nodes.*;
+import org.nyyakko.eryn.Nodes;
 
 import java.util.ArrayList;
 import java.util.Optional;
@@ -27,70 +28,77 @@ public class Parser
         this.tokens = tokens;
     }
 
-    public INode parse() { return parse(new Context()); }
+    public Nodes.INode parse() { return parse(new Context()); }
 
-    private INode parse(Context context)
+    private Nodes.INode parse(Context context)
     {
-        INode root = new ScopeNode();
+        Nodes.INode root = new Nodes.Scope();
 
         while (!eof())
         {
-            Token currentToken = take();
+            Token token = take();
 
-            switch (currentToken.type)
+            switch (token.type)
             {
             case KEYWORD: {
-                if (currentToken.data.equals("end") || (context.child > context.parent && (peek().data == "else" || peek().data == "default")))
+                if (token.data.equals("end") || (context.child > context.parent && (peek().data == "else" || peek().data == "default")))
                 {
                     untake();
                     return root;
                 }
 
-                if (currentToken.data.equals("def"))
+                Nodes.INode node = null;
+
+                if (token.data.equals("def"))
                 {
-                    INode node = parseFunction(context);
-                    ((ScopeNode)root).functionNodes.put(((FunctionNode)node).name, node);
+                    node = parseFunction(context);
+                    ((Nodes.Scope)root).functionNodes.put(((Nodes.Function)node).name, node);
                 }
-                else if (currentToken.data.equals("let"))
+                else if (token.data.equals("let"))
                 {
-                    INode node = parseLetStatement(context);
-                    ((ScopeNode)root).variableNodes.put(((VariableNode)node).name, node);
+                    node = parseLetStatement(context);
+                    ((Nodes.Scope)root).variableNodes.put(((Nodes.Variable)((Nodes.Let)node).value).name, node);
                 }
-                else if (currentToken.data.equals("if"))
+                else if (token.data.equals("if"))
                 {
-                    INode node = parseIfStatement(context);
-                    ((ScopeNode)root).nodes.add(node);
+                    node = parseIfStatement(context);
+                    ((Nodes.Scope)root).nodes.add(node);
                 }
-                else if (currentToken.data.equals("return"))
+                else if (token.data.equals("return"))
                 {
-                    INode node = parseReturnStatement(context);
-                    ((ScopeNode)root).nodes.add(node);
+                    node = parseReturnStatement(context);
+                    ((Nodes.Scope)root).nodes.add(node);
                 }
                 else
                 {
                     assert(false)
-                        : String.format("UNEXPECTED KEYWORD \"%s\" @ (%d,%d)",
-                                currentToken.data, currentToken.row, currentToken.col);
+                        : String.format("UNEXPECTED KEYWORD \"%s\" @ (%d,%d)", token.data, token.position.row(), token.position.col());
                 }
+
+                node.position = new Nodes.INode.Position(token.position.row(), token.position.col());
 
                 break;
             }
             case LITERAL: {
-                LiteralNode node = new LiteralNode();
-                node.type        = null; // FIXME: properly deduce literal type
-                node.value       = currentToken.data;
+                Nodes.Literal node = new Nodes.Literal();
+                node.type          = null; // FIXME: properly deduce literal type
+                node.value         = token.data;
+                node.position      = new Nodes.INode.Position(token.position.row(), token.position.col());
                 return node;
             }
             case LPAREN: {
-                ExpressionNode node = new ExpressionNode();
-                node.value          = parse(context);
+                Nodes.Expression node = new Nodes.Expression();
+                node.value            = parse(context);
+                node.position         = new Nodes.INode.Position(token.position.row(), token.position.col());
                 assert(!eof() && peek().type == Token.Type.RPAREN);
                 take();
                 return node;
             }
             case IDENTIFIER: {
                 untake();
-                ((ScopeNode)root).nodes.add(parseFunctionCall(context));
+                Nodes.INode node = parseFunctionCall(context);
+                node.position    = new Nodes.INode.Position(token.position.row(), token.position.col());
+                ((Nodes.Scope)root).nodes.add(node);
                 break;
             }
 
@@ -100,8 +108,7 @@ public class Parser
             case END__:
             default: {
                 assert(false)
-                    : String.format("UNEXPECTED TOKEN \"%s\" @ (%d,%d)",
-                            currentToken.data, currentToken.row, currentToken.col);
+                    : String.format("UNEXPECTED TOKEN \"%s\" @ (%d,%d)", token.data, token.position.row(), token.position.col());
                 break;
             }
             }
@@ -110,10 +117,11 @@ public class Parser
         return root;
     }
 
-    private INode parseVariable(Context context)
+    private Nodes.INode parseVariable(Context context)
     {
-        VariableNode node = new VariableNode();
-        assert(!Lexer.keywords.contains(peek().data)) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);;
+        Nodes.Variable node = new Nodes.Variable();
+        assert(!Lexer.keywords.contains(peek().data)) 
+                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
         node.name = take().data;
         take();
         node.type = take().data;
@@ -121,46 +129,45 @@ public class Parser
         if (peek().type == Token.Type.EQUALS)
         {
             take();
-            assert(!Lexer.keywords.contains(peek().data)) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);;
+            assert(!Lexer.keywords.contains(peek().data))
+                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
             node.value = Optional.of(take().data);
         }
 
         return node;
     }
 
-    private INode parseIfStatement(Context context)
+    private Nodes.INode parseIfStatement(Context context)
     {
-        ConditionalNode node = new ConditionalNode();
+        Nodes.Conditional node = new Nodes.Conditional();
 
         node.condition   = parse(context);
         node.ifBranch    = parse(new Context(context.child, context.child + 1));
-        INode elseBranch = parse(new Context(context.child, context.parent));
+        Nodes.INode elseBranch = parse(new Context(context.child, context.parent));
         node.elseBranch  = elseBranch != null ? Optional.of(elseBranch) : Optional.empty();
 
-        assert(peek().type == Token.Type.KEYWORD && peek().data.equals("end")) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);;
+        assert(peek().type == Token.Type.KEYWORD && peek().data.equals("end")) 
+            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
         take();
 
         return node;
     }
 
-    private INode parseLetStatement(Context context)
+    private Nodes.INode parseLetStatement(Context context)
     {
-        // untake();
-        // VariableDeclNode node = new VariableDeclNode();
-        // node.token = take();
-        // node.value = parseVariable(context);
-
-        // return node;
-        return parseVariable(context);
+        Nodes.Let node = new Nodes.Let();
+        node.value     = parseVariable(context);
+        return node;
     }
 
-    private INode parseFunction(Context context)
+    private Nodes.INode parseFunction(Context context)
     {
-        FunctionNode node = new FunctionNode();
+        Nodes.Function node = new Nodes.Function();
         node.returnType   = Optional.empty(); // FIXME: properly handle return type
-        assert(!Lexer.keywords.contains(peek().data)) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);
+        assert(!Lexer.keywords.contains(peek().data)) 
+            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
         node.name         = take().data;
-        node.arguments    = new ArrayList<INode>();
+        node.arguments    = new ArrayList<Nodes.INode>();
 
         take();
         while (!eof() && peek().type != Token.Type.RPAREN)
@@ -172,21 +179,23 @@ public class Parser
         if (peek().data.charAt(0) == ':')
         {
             take();
-            assert(peek().type == Token.Type.KEYWORD) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);
+            assert(peek().type == Token.Type.KEYWORD)
+                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
             node.returnType = Optional.of(take().data);
         }
 
         node.body = parse(new Context(context.parent, context.child + 1));
 
-        assert(!eof() && peek().type == Token.Type.KEYWORD && peek().data.equals("end")) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);;
+        assert(!eof() && peek().type == Token.Type.KEYWORD && peek().data.equals("end")) 
+            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
         take();
 
         return node;
     }
 
-    private INode parseFunctionCall(Context context)
+    private Nodes.INode parseFunctionCall(Context context)
     {
-        FunctionCallNode node = new FunctionCallNode();
+        Nodes.FunctionCall node = new Nodes.FunctionCall();
         node.callee           = take().data;
         node.arguments        = new ArrayList<String>();
 
@@ -194,7 +203,8 @@ public class Parser
         while (!eof() && peek().type != Token.Type.RPAREN)
         {
             // FIXME: Token.Type.IDENTIFIER includes function names, which should not be printable. ig.
-            assert(peek().type == Token.Type.LITERAL || peek().type == Token.Type.IDENTIFIER) : System.out.printf("Something fishy at (%d,%d)%n", peek().row, peek().col);;
+            assert(peek().type == Token.Type.LITERAL || peek().type == Token.Type.IDENTIFIER) 
+                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
             node.arguments.add(take().data);
         }
         take();
@@ -202,7 +212,7 @@ public class Parser
         return node;
     }
 
-    private INode parseReturnStatement(Context context)
+    private Nodes.INode parseReturnStatement(Context context)
     {
         assert(false) : "UNIMPLEMENTED";
         return null;
