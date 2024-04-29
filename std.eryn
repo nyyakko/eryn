@@ -1,0 +1,7 @@
+fn println(format: string)
+    intrinsic println(format)
+end
+
+fn print(format: string)
+    intrinsic print(format)
+end
