@@ -2,12 +2,36 @@ package org.nyyakko.eryn;
 
 import org.nyyakko.eryn.Token;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Scanner;
 
 public class Lexer
 {
+    public static Optional<ArrayList<String>> readSourceContent(File path)
+    {
+        Optional<ArrayList<String>> result = Optional.empty();
+
+        try (Scanner scanner = new Scanner(new BufferedReader(new FileReader(path))))
+        {
+            ArrayList<String> source = new ArrayList<String>();
+            while (scanner.hasNext())
+                source.add(scanner.nextLine());
+            result = Optional.of(source);
+        }
+        catch (IOException exception)
+        {
+            System.out.printf("%s%n", exception.getMessage());
+        }
+
+        return result;
+    }
+
     static class Position
     {
         public Position(Integer row, Integer col)
@@ -22,7 +46,7 @@ public class Lexer
 
     private static final List<Character> special = List.of('"', '(', ')', ':', '=', ' ');
     public static final List<String> keywords    = List.of(
-        "def",
+        "fn",
         "end",
         "if",
         "else",
@@ -39,7 +63,9 @@ public class Lexer
         "int",
         "float",
         "double",
-        "string"
+        "string",
+        "intrinsic",
+        "import"
     );
 
     public Lexer(ArrayList<String> source)

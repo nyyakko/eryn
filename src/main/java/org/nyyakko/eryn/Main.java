@@ -4,35 +4,12 @@ import org.nyyakko.eryn.Lexer;
 import org.nyyakko.eryn.Parser;
 import org.nyyakko.eryn.Interpreter;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Optional;
-import java.util.Scanner;
+import java.io.File;
 
 public class Main
 {
-    public static Optional<ArrayList<String>> readSourceContent(File path)
-    {
-        Optional<ArrayList<String>> result = Optional.empty();
-
-        try (Scanner scanner = new Scanner(new BufferedReader(new FileReader(path))))
-        {
-            ArrayList<String> source = new ArrayList<String>();
-            while (scanner.hasNext())
-                source.add(scanner.nextLine());
-            result = Optional.of(source);
-        }
-        catch (IOException exception)
-        {
-            System.out.printf("%s%n", exception.getMessage());
-        }
-
-        return result;
-    }
-
     public static void main(String[] args)
     {
         if (args.length == 0)
@@ -41,7 +18,7 @@ public class Main
             System.exit(0);
         }
 
-        Optional<ArrayList<String>> maybeSource = readSourceContent(new File(args[0]));
+        Optional<ArrayList<String>> maybeSource = Lexer.readSourceContent(new File(args[0]));
 
         maybeSource
             .map((source) -> {
@@ -49,8 +26,11 @@ public class Main
                 return lexer.tokenize();
             })
             .map((tokens) -> {
+                // tokens.forEach((token) -> { System.out.printf("%s %s%n", token.data, token.type); });
+
                 Parser parser = new Parser(tokens);
                 return parser.parse();
+                // return null;
             })
             .ifPresentOrElse((ast) -> {
                 Interpreter interpreter = new Interpreter(ast);

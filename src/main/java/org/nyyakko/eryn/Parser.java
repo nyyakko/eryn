@@ -47,32 +47,36 @@ public class Parser
                     return root;
                 }
 
+                if (token.data.equals("intrinsic")) { break; }
+
                 Nodes.INode node = null;
 
-                if (token.data.equals("def"))
+                switch (token.data)
                 {
+                case "fn": {
                     node = parseFunction(context);
                     ((Nodes.Scope)root).functionNodes.put(((Nodes.Function)node).name, node);
+                    break;
                 }
-                else if (token.data.equals("let"))
-                {
+                case "let": {
                     node = parseLetStatement(context);
                     ((Nodes.Scope)root).variableNodes.put(((Nodes.Variable)((Nodes.Let)node).value).name, node);
+                    break;
                 }
-                else if (token.data.equals("if"))
-                {
-                    node = parseIfStatement(context);
-                    ((Nodes.Scope)root).nodes.add(node);
+                case "import": {
+                    node = parseImportStatement(context);
+                    ((Nodes.Scope)root).importNodes.put(((Nodes.Import)node).importee, node);
+                    break;
                 }
-                else if (token.data.equals("return"))
-                {
-                    node = parseReturnStatement(context);
-                    ((Nodes.Scope)root).nodes.add(node);
-                }
-                else
-                {
+                default: {
                     assert(false)
-                        : String.format("UNEXPECTED KEYWORD \"%s\" @ (%d,%d)", token.data, token.position.row(), token.position.col());
+                        : String.format(
+                              "UNEXPECTED KEYWORD \"%s\" @ (%d,%d)",
+                              token.data,
+                              token.position.row(),
+                              token.position.col()
+                          );
+                }
                 }
 
                 node.position = new Nodes.INode.Position(token.position.row(), token.position.col());
@@ -91,18 +95,31 @@ public class Parser
                 node.value            = parse(context);
                 node.position         = new Nodes.INode.Position(token.position.row(), token.position.col());
                 assert(!eof() && peek().type == Token.Type.RPAREN);
-                take();
-                return node;
+                root = node;
             }
+            case RPAREN: { return root; }
             case IDENTIFIER: {
                 untake();
-                Nodes.INode node = parseFunctionCall(context);
-                node.position    = new Nodes.INode.Position(token.position.row(), token.position.col());
+                untake();
+
+                Nodes.INode node = null;
+
+                if (peek().type == Token.Type.KEYWORD && peek().data.equals("intrinsic"))
+                {
+                    take();
+                    node = parseFunctionCall(context, Nodes.FunctionCall.Type.INTRINSIC);
+                }
+                else
+                {
+                    take();
+                    node = parseFunctionCall(context, Nodes.FunctionCall.Type.NONINTRINSIC);
+                }
+
+                node.position = new Nodes.INode.Position(token.position.row(), token.position.col());
                 ((Nodes.Scope)root).nodes.add(node);
                 break;
             }
 
-            case RPAREN:
             case COLON:
             case BEGIN__:
             case END__:
@@ -120,7 +137,7 @@ public class Parser
     private Nodes.INode parseVariable(Context context)
     {
         Nodes.Variable node = new Nodes.Variable();
-        assert(!Lexer.keywords.contains(peek().data)) 
+        assert(!Lexer.keywords.contains(peek().data))
                 : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
         node.name = take().data;
         take();
@@ -193,11 +210,12 @@ public class Parser
         return node;
     }
 
-    private Nodes.INode parseFunctionCall(Context context)
+    private Nodes.INode parseFunctionCall(Context context, Nodes.FunctionCall.Type type)
     {
         Nodes.FunctionCall node = new Nodes.FunctionCall();
-        node.callee           = take().data;
-        node.arguments        = new ArrayList<String>();
+        node.callee             = take().data;
+        node.arguments          = new ArrayList<String>();
+        node.callType           = type;
 
         take();
         while (!eof() && peek().type != Token.Type.RPAREN)
@@ -209,6 +227,13 @@ public class Parser
         }
         take();
 
+        return node;
+    }
+
+    private Nodes.INode parseImportStatement(Context context)
+    {
+        Nodes.Import node = new Nodes.Import();
+        node.importee     = take().data;
         return node;
     }
 
