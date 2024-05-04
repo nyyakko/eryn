@@ -26,11 +26,8 @@ public class Main
                 return lexer.tokenize();
             })
             .map((tokens) -> {
-                // tokens.forEach((token) -> { System.out.printf("%s %s%n", token.data, token.type); });
-
                 Parser parser = new Parser(tokens);
                 return parser.parse();
-                // return null;
             })
             .ifPresentOrElse((ast) -> {
                 Interpreter interpreter = new Interpreter(ast);
