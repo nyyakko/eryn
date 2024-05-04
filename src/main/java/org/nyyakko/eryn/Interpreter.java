@@ -33,10 +33,6 @@ public class Interpreter
         public HashMap<String, Nodes.INode> importNodes;
     }
 
-    static final List<String> intrinsics = List.of(
-        "println"
-    );
-
     public Interpreter(Nodes.INode ast)
     {
         this.ast = ast;
