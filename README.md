@@ -9,22 +9,22 @@ An interpreted programming language made in Java for learning purposes. Currentl
 ``>java -jar ea target/eryn.jar <SOURCE>``
 
 # examples
-```ruby
+```
 import "./std.eryn"
 
-def main()
+fn main()
     println("Hello, world!")
 end
 ```
 
-```ruby
+```
 import "./std.eryn"
 
-def say(message: string)
+fn say(message: string)
     println(message)
 end
 
-def main()
+fn main()
     let message: string = "Hello, world!"
     say(message)
 end
