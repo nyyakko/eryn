@@ -71,10 +71,10 @@ public class Parser
                 default: {
                     assert(false)
                         : String.format(
-                              "UNEXPECTED KEYWORD \"%s\" @ (%d,%d)",
-                              token.data,
+                              "(%d, %d) UNEXPECTED KEYWORD \"%s\" WAS REACHED",
                               token.position.row(),
-                              token.position.col()
+                              token.position.col(),
+                              token.data
                           );
                 }
                 }
@@ -125,7 +125,12 @@ public class Parser
             case END__:
             default: {
                 assert(false)
-                    : String.format("UNEXPECTED TOKEN \"%s\" @ (%d,%d)", token.data, token.position.row(), token.position.col());
+                    : String.format(
+                            "(%d, %d) UNEXPECTED TOKEN \"%s\" WAS REACHED",
+                            token.position.row(),
+                            token.position.col(),
+                            token.data
+                      );
                 break;
             }
             }
@@ -138,7 +143,7 @@ public class Parser
     {
         Nodes.Variable node = new Nodes.Variable();
         assert(!Lexer.keywords.contains(peek().data))
-                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+                : String.format("(%d, %d) \"%s\" IS A RESERVED IDENTIFIER", peek().position.row(), peek().position.col(), peek().data);
         node.name = take().data;
         take();
         node.type = take().data;
@@ -147,7 +152,7 @@ public class Parser
         {
             take();
             assert(!Lexer.keywords.contains(peek().data))
-                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+                : String.format("(%d, %d) \"%s\" IS A RESERVED IDENTIFIER", peek().position.row(), peek().position.col(), peek().data);
             node.value = Optional.of(take().data);
         }
 
@@ -163,8 +168,8 @@ public class Parser
         Nodes.INode elseBranch = parse(new Context(context.child, context.parent));
         node.elseBranch  = elseBranch != null ? Optional.of(elseBranch) : Optional.empty();
 
-        assert(peek().type == Token.Type.KEYWORD && peek().data.equals("end")) 
-            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+        assert(peek().type == Token.Type.KEYWORD && peek().data.equals("end"))
+            : String.format("(%d,%d) EXPECTED \"end\" GOT \"%s\"", peek().position.row(), peek().position.col(), peek().data);
         take();
 
         return node;
@@ -181,8 +186,8 @@ public class Parser
     {
         Nodes.Function node = new Nodes.Function();
         node.returnType   = Optional.empty(); // FIXME: properly handle return type
-        assert(!Lexer.keywords.contains(peek().data)) 
-            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+        assert(!Lexer.keywords.contains(peek().data))
+                : String.format("(%d, %d) \"%s\" IS A RESERVED IDENTIFIER", peek().position.row(), peek().position.col(), peek().data);
         node.name         = take().data;
         node.arguments    = new ArrayList<Nodes.INode>();
 
@@ -197,14 +202,14 @@ public class Parser
         {
             take();
             assert(peek().type == Token.Type.KEYWORD)
-                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+                : String.format("(%d, %d) \"%s\" IS A RESERVED IDENTIFIER", peek().position.row(), peek().position.col(), peek().data);
             node.returnType = Optional.of(take().data);
         }
 
         node.body = parse(new Context(context.parent, context.child + 1));
 
-        assert(!eof() && peek().type == Token.Type.KEYWORD && peek().data.equals("end")) 
-            : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+        assert(!eof() && peek().type == Token.Type.KEYWORD && peek().data.equals("end"))
+            : String.format("(%d,%d), EXPECTED \"end\" GOT \"%s\"", peek().position.row(), peek().position.col(), peek().data);
         take();
 
         return node;
@@ -220,9 +225,9 @@ public class Parser
         take();
         while (!eof() && peek().type != Token.Type.RPAREN)
         {
-            // FIXME: Token.Type.IDENTIFIER includes function names, which should not be printable. ig.
-            assert(peek().type == Token.Type.LITERAL || peek().type == Token.Type.IDENTIFIER) 
-                : System.out.printf("Something fishy at (%d,%d)%n", peek().position.row(), peek().position.col());
+            // FIXME: Token.Type.IDENTIFIER also includes function names
+            assert(peek().type == Token.Type.LITERAL || peek().type == Token.Type.IDENTIFIER)
+                : String.format("(%d,%d) INVALID ARGUMENT", peek().position.row(), peek().position.col());
             node.arguments.add(take().data);
         }
         take();

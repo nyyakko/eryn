@@ -113,11 +113,10 @@ public class Lexer
         Token result     = new Token();
         StringBuilder sb = new StringBuilder();
 
-        take();
         while (!eof())
         {
-            if (peek() == '"') { take(); break; }
             sb.append(take());
+            if (peek() == '"') { sb.append(take()); break; }
         }
 
         result.type = Token.Type.LITERAL;

@@ -55,8 +55,10 @@ public class Interpreter
     {
         for (String importPath : scope.importNodes.keySet())
         {
+            assert(importPath.startsWith("\"") && importPath.endsWith("\""));
+
             scope.importNodes.put(importPath,
-                Lexer.readSourceContent(new File(importPath))
+                Lexer.readSourceContent(new File(importPath.substring(1, importPath.length() - 1)))
                     .map((source) -> {
                         Lexer lexer = new Lexer(source);
                         return lexer.tokenize();
@@ -79,8 +81,8 @@ public class Interpreter
         case Nodes.IStatement statement -> {
             switch (statement)
             {
-            case Nodes.Conditional _ -> { assert(false) : "NOT IMPLEMENTED"; }
-            case Nodes.Selection _ -> { assert(false) : "NOT IMPLEMENTED"; }
+            case Nodes.Conditional node -> { assert(false) : String.format("(%d, %d) NOT IMPLEMENTED", node.position.row(), node.position.col()); }
+            case Nodes.Selection node -> { assert(false) : String.format("(%d, %d) NOT IMPLEMENTED", node.position.row(), node.position.col()); }
             case Nodes.FunctionCall node -> {
                 if (node.callType == Nodes.FunctionCall.Type.INTRINSIC)
                     interpretIntrinsicFunctionCall(node, localContext, globalContext);
@@ -88,7 +90,7 @@ public class Interpreter
                     interpretFunctionCall(node, localContext, globalContext);
                 break;
             }
-            case Nodes.IStatement _ -> { assert(false) : "INVALID NODE REACHED"; }
+            case Nodes.IStatement node -> { assert(false) : String.format("(%d, %d) INVALID NODE \"%s\" WAS REACHED", node.position.row(), node.position.col(), node); }
             }
             break;
         }
@@ -97,17 +99,17 @@ public class Interpreter
                 interpret(node, localContext, globalContext);
             break;
         }
-        case Nodes.INode _ -> { assert(false) : "INVALID NODE REACHED"; }
+        case Nodes.INode node -> { assert(false) : String.format("(%d, %d) INVALID NODE \"%s\" WAS REACHED", node.position.row(), node.position.col(), node); }
         }
     }
 
-    private Nodes.Variable unwrapVariable(Nodes.INode node)
+    private Nodes.Variable unwrapVariable(Nodes.INode head)
     {
-        switch (node)
+        switch (head)
         {
         case Nodes.Let let: { return (Nodes.Variable)let.value; }
         case Nodes.Variable variable: { return variable; }
-        case Nodes.INode _: { assert(false) : "INVALID NODE REACHED"; }
+        case Nodes.INode node: { assert(false) : String.format("(%d, %d) INVALID NODE \"%s\" WAS REACHED", node.position.row(), node.position.col(), node); }
         }
 
         return null;
@@ -138,44 +140,56 @@ public class Interpreter
 
     private void interpretIntrinsicFunctionCall(Nodes.FunctionCall node, Context localContext, Context globalContext)
     {
+        Function<String, String> fnUnquoted = (string) -> {
+            return string.startsWith("\"") && string.endsWith("\"")
+                        ? string.substring(1, string.length() - 1)
+                        : string;
+        };
+
         switch (node.callee)
         {
         case "println": {
             String parameterName = node.arguments.get(0);
 
-            Boolean isLocal      = localContext.variableNodes.containsKey(parameterName);
-            Boolean isGlobal     = globalContext.variableNodes.containsKey(parameterName);
+            Boolean isLocal  = localContext.variableNodes.containsKey(parameterName);
+            Boolean isGlobal = globalContext.variableNodes.containsKey(parameterName);
 
             if (!(isLocal || isGlobal))
             {
-                System.out.println(node.arguments.get(0));
+                System.out.println(parameterName);
                 break;
             }
 
             Nodes.Variable parameterNode = findVariable(parameterName, localContext, globalContext);
-            System.out.println(parameterNode.value.get());
+            System.out.println(fnUnquoted.apply(parameterNode.value.get()));
 
             break;
         }
         case "print": {
             String parameterName = node.arguments.get(0);
 
-            Boolean isLocal      = localContext.variableNodes.containsKey(parameterName);
-            Boolean isGlobal     = globalContext.variableNodes.containsKey(parameterName);
+            Boolean isLocal  = localContext.variableNodes.containsKey(parameterName);
+            Boolean isGlobal = globalContext.variableNodes.containsKey(parameterName);
 
             if (!(isLocal || isGlobal))
             {
-                System.out.println(node.arguments.get(0));
+                System.out.println(parameterName);
                 break;
             }
 
             Nodes.Variable parameterNode = findVariable(parameterName, localContext, globalContext);
-            System.out.print(parameterNode.value.get());
+            System.out.print(fnUnquoted.apply(parameterNode.value.get()));
 
             break;
         }
         default: {
-            assert(false) : String.format("UNKNOWN INTRINSIC CALL \"%s\"", node.callee);
+            assert(false)
+                : String.format(
+                    "(%d, %d) UNKNOWN INTRINSIC CALL \"%s\"",
+                    node.position.row(),
+                    node.position.col(),
+                    node.callee
+                  );
         }
         }
     }
@@ -184,7 +198,13 @@ public class Interpreter
     {
         Nodes.Function callee = findFunction(node, globalContext);
 
-        assert(callee != null) : String.format("FUNCTION \"%s\" IS NOT DEFINED", node.callee);
+        assert(callee != null)
+            : String.format(
+                    "(%d, %d) FUNCTION \"%s\" IS NOT DEFINED",
+                    node.position.row(),
+                    node.position.col(),
+                    node.callee
+              );
 
         for (String parameterName : node.arguments)
         {
@@ -204,7 +224,14 @@ public class Interpreter
 
             Nodes.Variable argumentNode  = (Nodes.Variable)callee.arguments.get(node.arguments.indexOf(parameterName));
             Nodes.Variable parameterNode = findVariable(parameterName, localContext, globalContext);
-            assert(argumentNode.type.equals(parameterNode.type)) : "MISMATCHING TYPES";
+            assert(argumentNode.type.equals(parameterNode.type))
+                : String.format(
+                        "(%d, %d) MISMATCHING TYPES EXPECTED \"%s\" GOT \"%s\"",
+                        node.position.row(),
+                        node.position.col(),
+                        argumentNode.type,
+                        parameterNode.type
+                  );
             ((Nodes.Scope)callee.body).variableNodes.put(argumentNode.name, parameterNode);
         }
 
