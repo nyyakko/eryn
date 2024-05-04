@@ -5,7 +5,7 @@ An interpreted programming language made in Java for learning purposes. Currentl
 # building
 ``>mvn package``
 
-# running (need java 21 or higher)
+# running (need java 22 or higher)
 ``>java -jar ea target/eryn.jar <SOURCE>``
 
 # examples
